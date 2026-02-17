@@ -1,0 +1,16 @@
+.footer {
+    padding: 2rem;
+    border-top: 1px solid rgba(56, 189, 248, 0.06);
+}
+
+.footer__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.footer__copy {
+    font-size: 0.85rem;
+    color: #475569;
+    margin: 0;
+}
