@@ -2,7 +2,7 @@ import { getAIResponse } from '../services/llmService.js';
 
 export async function handleChat(req, res, next) {
     try {
-        const { message } = req.body;
+        const { message, session_id } = req.body;
 
         if (!message || typeof message !== 'string' || !message.trim()) {
             const err = new Error('A non-empty "message" string is required');
@@ -10,7 +10,7 @@ export async function handleChat(req, res, next) {
             throw err;
         }
 
-        const reply = await getAIResponse(message.trim());
+        const reply = await getAIResponse(message.trim(), session_id || 'default');
 
         res.json({ success: true, reply });
     } catch (error) {

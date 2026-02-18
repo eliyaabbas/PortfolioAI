@@ -6,6 +6,9 @@ const API_URL = `${import.meta.env.VITE_API_URL}/api/chat`;
 
 
 
+// Generate a unique session ID per browser tab
+const generateSessionId = () => 'session_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+
 const initialMessages = [
     {
         id: 1,
@@ -27,6 +30,7 @@ export default function Chatbot() {
     const [isTyping, setIsTyping] = useState(false);
     const [showChips, setShowChips] = useState(true);
     const messagesContainerRef = useRef(null);
+    const sessionId = useRef(generateSessionId());
 
     useEffect(() => {
         const el = messagesContainerRef.current;
@@ -49,7 +53,7 @@ export default function Chatbot() {
             const res = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: trimmed }),
+                body: JSON.stringify({ message: trimmed, session_id: sessionId.current }),
             });
 
             const data = await res.json();

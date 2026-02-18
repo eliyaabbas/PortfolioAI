@@ -5,10 +5,15 @@ import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from collections import defaultdict
+from pyngrok import ngrok
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # --- CONFIGURATION ---
 OLLAMA_BASE_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 MODEL_ID = "gemma3:4b"
+NGROK_TOKEN = os.getenv("NGROK_TOKEN", "39lbbc8dbuKIztIKs5Nb6NudE7U_5GhZAHYx6AmhZWtjbWHsy")
 
 # --- APP SETUP ---
 app = FastAPI()
@@ -119,17 +124,15 @@ OFF_TOPIC_REDIRECTS = [
 # --- SMART GUARDRAILS ---
 BLOCKED_TOPICS = ['stock', 'invest', 'crypto', 'forex', 'finance market', 'trading']
 OFF_TOPIC_KEYWORDS = [
-    'weather', 'politics', 'religion', 'sports score', 'recipe', 'cooking',
-    'celebrity', 'gossip', 'movie review', 'song lyrics', 'joke',
+    'weather forecast', 'politics today', 'religion debate', 'sports score', 'recipe for', 'cooking tips',
+    'celebrity news', 'gossip about', 'movie review', 'song lyrics', 'tell me a joke',
     'write me a poem', 'tell me a story', 'who is the president',
-    'meaning of life', 'horoscope', 'astrology', 'president',
-    'capital of', 'population of', 'history of', 'how old is',
-    'what is the', 'who invented', 'who discovered', 'who won',
-    'world war', 'how does', 'what happened', 'when did',
-    'translate', 'define', 'what does', 'how many', 'how far',
-    'which country', 'tallest', 'biggest', 'fastest', 'richest',
-    'news', 'election', 'government', 'war', 'economy',
-    'movie', 'music', 'game', 'anime', 'manga',
+    'meaning of life', 'horoscope', 'astrology',
+    'capital of india', 'capital of usa', 'population of',
+    'who invented the', 'who discovered the', 'who won the',
+    'world war', 'translate this', 'tallest building',
+    'richest person', 'election results', 'latest news',
+    'play a game', 'anime recommendation', 'manga recommendation',
 ]
 
 CODING_REQUEST_KEYWORDS = [
@@ -201,6 +204,14 @@ async def call_ollama(messages):
         return data["message"]["content"]
 
 
+def _save_to_memory(session_id, user_input, reply):
+    """Save both user message and bot reply to session memory."""
+    memory = session_memory[session_id]
+    memory.append({"role": "user", "content": user_input})
+    memory.append({"role": "assistant", "content": reply})
+    session_memory[session_id] = memory[-10:]
+
+
 def generate_response(user_input, session_id="default"):
     """Synchronous wrapper — the actual LLM call is async."""
     import asyncio
@@ -220,37 +231,47 @@ async def _generate_response(user_input, session_id="default"):
         # Quick replies for common messages
         for key, reply in QUICK_REPLIES.items():
             if lower_input == key or lower_input == key + '!':
+                _save_to_memory(session_id, user_input, reply)
                 return {"reply": reply, "success": True}
 
         # Block financial topics
         if any(w in lower_input for w in BLOCKED_TOPICS):
-            return {"reply": "I'm specialized in Eliya's software portfolio, not financial advice! But speaking of impressive work — Eliya built a **Wallet Risk Scoring System** using ML. Want to know more about that instead?", "success": True}
+            reply = "I'm specialized in Eliya's software portfolio, not financial advice! But speaking of impressive work — Eliya built a **Wallet Risk Scoring System** using ML. Want to know more about that instead?"
+            _save_to_memory(session_id, user_input, reply)
+            return {"reply": reply, "success": True}
 
         # Redirect off-topic questions
         if any(w in lower_input for w in OFF_TOPIC_KEYWORDS):
-            return {"reply": random.choice(OFF_TOPIC_REDIRECTS), "success": True}
+            reply = random.choice(OFF_TOPIC_REDIRECTS)
+            _save_to_memory(session_id, user_input, reply)
+            return {"reply": reply, "success": True}
 
         # Redirect coding/tutorial requests
         if any(w in lower_input for w in CODING_REQUEST_KEYWORDS):
-            return {"reply": random.choice(CODING_REDIRECTS), "success": True}
+            reply = random.choice(CODING_REDIRECTS)
+            _save_to_memory(session_id, user_input, reply)
+            return {"reply": reply, "success": True}
 
-        # Hardcoded responses for common questions (bypass LLM)
-        for keyword, response in COMMON_QUESTION_KEYWORDS.items():
-            if keyword in lower_input:
-                return {"reply": response, "success": True}
+        # Hardcoded responses for short, standalone questions only
+        word_count = len(lower_input.split())
+        if word_count <= 6:
+            for keyword, response in COMMON_QUESTION_KEYWORDS.items():
+                if keyword in lower_input:
+                    _save_to_memory(session_id, user_input, response)
+                    return {"reply": response, "success": True}
 
-        # --- 2. Manage Memory ---
+        # --- 2. Build Conversation Context ---
         memory = session_memory[session_id]
         memory.append({"role": "user", "content": user_input})
         
-        # Keep strict context window (Last 3 turns = 6 messages)
-        recent_history = memory[-6:]
+        # Keep last 10 messages (5 full turns)
+        recent_history = memory[-10:]
         
-        # ENFORCE ALTERNATION
+        # Enforce alternation (must start with user)
         if recent_history and recent_history[0]['role'] == 'assistant':
             recent_history = recent_history[1:]
 
-        # Construct Messages
+        # Construct full message list for LLM
         messages = [
             {"role": "user", "content": f"[SYSTEM INSTRUCTIONS]\n{SYSTEM_PROMPT}\n\n[ELIYA'S PORTFOLIO CONTEXT]\n{PROJECT_CONTEXT}"},
             {"role": "assistant", "content": "Understood! I'll only use the facts provided about Eliya, keep responses concise (2-3 sentences), use he/him pronouns, and never invent information. How can I help you learn about Eliya?"},
@@ -278,11 +299,45 @@ async def _generate_response(user_input, session_id="default"):
             
         return {"reply": "I encountered a temporary error. Please try asking again.", "success": False, "error": str(e)}
 
+# --- FEEDBACK SYSTEM (lightweight reinforcement) ---
+import json
+from datetime import datetime
+
+FEEDBACK_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedback_log.json")
+
+def save_feedback(entry):
+    data = []
+    if os.path.exists(FEEDBACK_FILE):
+        with open(FEEDBACK_FILE, "r") as f:
+            data = json.load(f)
+    data.append(entry)
+    with open(FEEDBACK_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
 @app.post("/chat")
 async def chat_endpoint(data: dict):
     msg = data.get("message", "")
     sid = data.get("session_id", "default")
     return await _generate_response(msg, sid)
+
+@app.post("/feedback")
+async def feedback_endpoint(data: dict):
+    """Log user feedback (thumbs up/down) for reinforcement."""
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "session_id": data.get("session_id", "default"),
+        "user_message": data.get("user_message", ""),
+        "bot_reply": data.get("bot_reply", ""),
+        "rating": data.get("rating", ""),
+    }
+    save_feedback(entry)
+    return {"status": "feedback saved", "success": True}
+
+@app.get("/history/{session_id}")
+async def get_history(session_id: str):
+    """Debug: view conversation history for a session."""
+    return {"session_id": session_id, "history": session_memory.get(session_id, [])}
 
 @app.get("/")
 def root():
@@ -290,5 +345,20 @@ def root():
 
 if __name__ == "__main__":
     print(f"🚀 Starting Server with {MODEL_ID} via Ollama...")
-    print(f"� Ollama URL: {OLLAMA_BASE_URL}")
+    print(f"📡 Ollama URL: {OLLAMA_BASE_URL}")
+
+    # Connect Ngrok for public access
+    if NGROK_TOKEN:
+        ngrok.set_auth_token(NGROK_TOKEN)
+        try:
+            public_url = ngrok.connect(8000).public_url
+            print(f"\n🔗 PUBLIC URL: {public_url}")
+            print(f"🔗 CHAT ENDPOINT: {public_url}/chat\n")
+        except Exception as e:
+            print(f"⚠️  Ngrok connection failed: {e}")
+            print("Running locally on http://localhost:8000")
+    else:
+        print("⚠️  No NGROK_TOKEN found. Running locally only on http://localhost:8000")
+        print("Set NGROK_TOKEN in .env to expose publicly.")
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -3,7 +3,7 @@ import env from '../config/env.js';
 
 const TIMEOUT_MS = 90000; // 90s — Ollama cold start can take time to load model into VRAM
 
-export async function getAIResponse(message) {
+export async function getAIResponse(message, session_id = 'default') {
     if (!env.llmApiUrl) {
         const err = new Error('LLM_API_URL is not configured');
         err.status = 503;
@@ -13,7 +13,7 @@ export async function getAIResponse(message) {
     try {
         const { data } = await axios.post(
             env.llmApiUrl,
-            { message },
+            { message, session_id },
             {
                 headers: { 'Content-Type': 'application/json' },
                 timeout: TIMEOUT_MS,
