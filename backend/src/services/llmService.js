@@ -1,7 +1,7 @@
 import axios from 'axios';
 import env from '../config/env.js';
 
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 90000; // 90s — Ollama cold start can take time to load model into VRAM
 
 export async function getAIResponse(message) {
     if (!env.llmApiUrl) {
@@ -29,8 +29,9 @@ export async function getAIResponse(message) {
         }
 
         if (error.response) {
+            console.error('[LLM Service Error Response]', error.response.data);
             const err = new Error(
-                `LLM service returned ${error.response.status}: ${error.response.data?.detail || 'Unknown error'}`
+                `LLM service returned ${error.response.status}: ${error.response.data?.detail || JSON.stringify(error.response.data) || 'Unknown error'}`
             );
             err.status = 502;
             throw err;

@@ -183,3 +183,67 @@
     transform: scale(1.05);
     box-shadow: 0 4px 16px rgba(56, 189, 248, 0.3);
 }
+
+/* --- Suggestion Chips --- */
+.chatbot__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+    animation: bubbleIn 0.35s ease;
+}
+
+.chatbot__chip {
+    padding: 0.45rem 0.9rem;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 20px;
+    color: #93c5fd;
+    font-size: 0.8rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.chatbot__chip:hover {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.5);
+    color: #bfdbfe;
+    box-shadow: 0 2px 12px rgba(56, 189, 248, 0.15);
+    transform: translateY(-1px);
+}
+
+/* --- Markdown inside bot bubbles --- */
+.chatbot__bubble--bot strong {
+    color: #7dd3fc;
+    font-weight: 600;
+}
+
+.chatbot__bubble--bot ul,
+.chatbot__bubble--bot ol {
+    margin: 0.3rem 0;
+    padding-left: 1.2rem;
+}
+
+.chatbot__bubble--bot li {
+    margin-bottom: 0.15rem;
+}
+
+.chatbot__bubble--bot code {
+    background: rgba(56, 189, 248, 0.1);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: #7dd3fc;
+}
+
+.chatbot__bubble--bot a {
+    color: #38bdf8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.chatbot__bubble--bot a:hover {
+    color: #7dd3fc;
+}
