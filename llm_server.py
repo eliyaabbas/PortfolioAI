@@ -160,26 +160,6 @@ QUICK_REPLIES = {
     'what can you do': "I can tell you all about Eliya's **projects** (like his ML-powered Wallet Risk Scorer), his **skills** (Python at 95%!), his **education**, and why he'd be a great fit for your team. What interests you?",
 }
 
-# --- HARDCODED RESPONSES for common questions (bypass LLM entirely) ---
-COMMON_QUESTION_KEYWORDS = {
-    'about eliya': "**Eliya Abbas Sayyed** is a 26-year-old **Python Developer & ML Engineer** based in Mumbai, India. He graduated in 2024 with a B.E. in CSE (AI & ML) from **M.H. Saboo Siddik College of Engineering**, Mumbai University (7.75 CGPA). He has 1+ years of experience building full-stack apps, ML models, and AI-powered tools — including this very chatbot! 🚀",
-    'tell me about eliya': "**Eliya Abbas Sayyed** is a 26-year-old **Python Developer & ML Engineer** based in Mumbai, India. He graduated in 2024 with a B.E. in CSE (AI & ML) from **M.H. Saboo Siddik College of Engineering**, Mumbai University (7.75 CGPA). He has 1+ years of experience building full-stack apps, ML models, and AI-powered tools — including this very chatbot! 🚀",
-    'who is eliya': "**Eliya Abbas Sayyed** is a 26-year-old **Python Developer & ML Engineer** based in Mumbai. He holds a B.E. in CSE (AI & ML) with 7.75 CGPA from Mumbai University (2024). He builds intelligent solutions with Python, React, and ML — check out his projects below!",
-    'your skills': "Eliya's top skills: **Python (95%)**, **Data Analysis (90%)**, **SQL (88%)**, **Machine Learning (82%)**, and **React (80%)**. He also works with Node.js, MongoDB, Tableau, and is currently expanding into **AWS** and **LLMs**. Want to know about a specific skill?",
-    'eliya skills': "Eliya's top skills: **Python (95%)**, **Data Analysis (90%)**, **SQL (88%)**, **Machine Learning (82%)**, and **React (80%)**. He also works with Node.js, MongoDB, Tableau, and is currently expanding into **AWS** and **LLMs**. Want to know about a specific skill?",
-    'top skills': "Eliya's top skills: **Python (95%)**, **Data Analysis (90%)**, **SQL (88%)**, **Machine Learning (82%)**, and **React (80%)**. He also works with Node.js, MongoDB, Tableau, and is currently expanding into **AWS** and **LLMs**!",
-    'his projects': "Eliya has built 4 key projects:\n- **QR Digital Menu Platform** — React/Node.js/MongoDB restaurant app\n- **Wallet Risk Scoring System** — ML-based DeFi risk scorer (0–1000 scale)\n- **AI Interviewer** — LLM-powered technical interview simulator\n- **This Portfolio Chatbot** — React + FastAPI + Gemma 3\nWant details on any of them?",
-    'about his projects': "Eliya has built 4 key projects:\n- **QR Digital Menu Platform** — React/Node.js/MongoDB restaurant app\n- **Wallet Risk Scoring System** — ML-based DeFi risk scorer (0–1000 scale)\n- **AI Interviewer** — LLM-powered technical interview simulator\n- **This Portfolio Chatbot** — React + FastAPI + Gemma 3\nWant details on any of them?",
-    'why should i hire': "Great question! Eliya offers a **rare combo** of full-stack dev AND data science/ML skills. He's built production apps (QR Menu Platform), ML models (Wallet Risk Scorer), and even deployed an LLM to production (this chatbot!). With a B.E. in AI/ML and hands-on experience — he delivers real results. Reach out via the **Contact** section! 🚀",
-    'why hire eliya': "Great question! Eliya offers a **rare combo** of full-stack dev AND data science/ML skills. He's built production apps (QR Menu Platform), ML models (Wallet Risk Scorer), and even deployed an LLM to production (this chatbot!). With a B.E. in AI/ML and hands-on experience — he delivers real results. Reach out via the **Contact** section! 🚀",
-    'education': "Eliya's education:\n- **B.E. in CSE (AI & ML)** — 7.75 CGPA from **M.H. Saboo Siddik College of Engineering**, Mumbai University (2024)\n- **Polytechnic Diploma** — 7.24 CGPA from **Sri Satya Sai College**, Sehore, Bhopal (2019)\nHe's currently expanding into AWS and advanced LLMs!",
-    'his education': "Eliya's education:\n- **B.E. in CSE (AI & ML)** — 7.75 CGPA from **M.H. Saboo Siddik College of Engineering**, Mumbai University (2024)\n- **Polytechnic Diploma** — 7.24 CGPA from **Sri Satya Sai College**, Sehore, Bhopal (2019)\nHe's currently expanding into AWS and advanced LLMs!",
-    'how was this chatbot built': "This chatbot is a **3-tier architecture**: a **React 19** frontend → **Express.js** API gateway → **FastAPI** server running **Gemma 3 4B** via Ollama. It features session memory, smart guardrails, and a biased persona — all built by Eliya! 🔥",
-    'contact': "You can reach Eliya through the **Contact** section on this page! Scroll down or click 'Contact Me' in the navigation. He'd love to hear from you! 🚀",
-    'projects': "Eliya has built 4 key projects:\n- **QR Digital Menu Platform** — React/Node.js/MongoDB restaurant app\n- **Wallet Risk Scoring System** — ML-based DeFi risk scorer (0–1000 scale)\n- **AI Interviewer** — LLM-powered technical interview simulator\n- **This Portfolio Chatbot** — React + FastAPI + Gemma 3\nWant details on any of them?",
-    'skills': "Eliya's top skills: **Python (95%)**, **Data Analysis (90%)**, **SQL (88%)**, **Machine Learning (82%)**, and **React (80%)**. He also works with Node.js, MongoDB, Tableau, and is currently expanding into **AWS** and **LLMs**!",
-    'experience': "Eliya has **1+ years of experience** in software engineering and data analysis. He's built production-ready apps, ML models, and deployed LLMs — all with a B.E. in AI/ML from Mumbai University (2024). Want to see his projects?",
-}
 
 
 async def call_ollama(messages):
@@ -251,14 +231,6 @@ async def _generate_response(user_input, session_id="default"):
             reply = random.choice(CODING_REDIRECTS)
             _save_to_memory(session_id, user_input, reply)
             return {"reply": reply, "success": True}
-
-        # Hardcoded responses for short, standalone questions only
-        word_count = len(lower_input.split())
-        if word_count <= 6:
-            for keyword, response in COMMON_QUESTION_KEYWORDS.items():
-                if keyword in lower_input:
-                    _save_to_memory(session_id, user_input, response)
-                    return {"reply": response, "success": True}
 
         # --- 2. Build Conversation Context ---
         memory = session_memory[session_id]
