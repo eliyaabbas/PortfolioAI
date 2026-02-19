@@ -1,4 +1,5 @@
 import os
+import re
 import random
 import uvicorn
 import httpx
@@ -157,9 +158,12 @@ CODING_REDIRECTS = [
 
 QUICK_REPLIES = {
     'hi': "Hey there! 👋 I'm Eliya's AI assistant. I can tell you about his **projects**, **skills**, or **why you should work with him**. What interests you?",
+    'hii': "Hey there! 👋 I'm Eliya's AI assistant. I can tell you about his **projects**, **skills**, or **why you should work with him**. What interests you?",
     'hello': "Hello! 👋 I'm Eliya's AI assistant. I can tell you about his **projects**, **skills**, or **why you should work with him**. What interests you?",
     'hey': "Hey! 👋 Welcome to Eliya's portfolio. Ask me about his **projects**, **tech stack**, or **experience** — I know it all!",
     'yo': "Yo! 👋 I'm Eliya's personal AI. Fire away — ask me about his **skills**, **projects**, or anything about his work!",
+    'sup': "What's up! 👋 I'm Eliya's AI assistant. Ask me about his **projects**, **skills**, or **experience**!",
+    'howdy': "Howdy! 👋 Welcome to Eliya's portfolio. I'm here to tell you about his **projects**, **skills**, or **experience**!",
     'thanks': "You're welcome! Feel free to reach out to Eliya through the **Contact** section if you'd like to connect. 🚀",
     'thank you': "Happy to help! If you're impressed (you should be 😄), Eliya would love to hear from you — check the **Contact** section!",
     'bye': "Goodbye! Thanks for exploring Eliya's portfolio. Don't forget to check out his projects and reach out if you'd like to collaborate! 🚀",
@@ -215,9 +219,11 @@ async def _generate_response(user_input, session_id="default"):
         
         lower_input = user_input.lower()
 
-        # Quick replies for common messages
+        # Quick replies for common messages (strip punctuation + normalize repeated chars)
+        clean_input = lower_input.strip('!?.,:;')
+        clean_input = re.sub(r'(.)\1{2,}', r'\1\1', clean_input)  # "hiiiii" → "hii"
         for key, reply in QUICK_REPLIES.items():
-            if lower_input == key or lower_input == key + '!':
+            if clean_input == key:
                 _save_to_memory(session_id, user_input, reply)
                 return {"reply": reply, "success": True}
 
